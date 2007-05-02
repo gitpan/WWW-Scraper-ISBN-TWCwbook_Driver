@@ -13,6 +13,7 @@ requires(qw(
 	WWW::Scraper::ISBN::Driver	0.18
 	Template::Extract		0.40
 	WWW::Mechanize			1.16
+	Text::Iconv			1.14
 ));
 
 WriteAll();

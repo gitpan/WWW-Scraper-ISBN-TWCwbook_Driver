@@ -6,7 +6,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION @ISA);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 #--------------------------------------------------------------------------
 
@@ -33,14 +33,13 @@ Searches for book information from the TWCwbook's online catalog.
 use WWW::Scraper::ISBN::Driver;
 use WWW::Mechanize;
 use Template::Extract;
-
-use Data::Dumper;
+use Text::Iconv;
 
 ###########################################################################
 #Constants                                                                #
 ###########################################################################
 
-use constant	CWBOOK	=> "http://www.cwbook.com.tw/cw/T1.jsp";
+use constant	QUERY	=> "http://www.cwbook.com.tw/search/result1.jsp?field=2&keyWord=%s";
 
 #--------------------------------------------------------------------------
 
@@ -75,7 +74,6 @@ a valid page is returned, the following fields are returned via the book hash:
   pubdate
   publisher
   price_list
-  price_sell
 
 The book_link and image_link refer back to the Cwbook website. 
 
@@ -89,21 +87,13 @@ sub search {
 	$self->found(0);
 	$self->book(undef);
 
+	my $url = sprintf(QUERY, $isbn);
 	my $mechanize = WWW::Mechanize->new();
-	$mechanize->get(CWBOOK);
+	$mechanize->get($url);
 	return undef unless($mechanize->success());
 
-	$mechanize->submit_form(
-		form_name	=> 'schForm',
-		fields		=> {
-			schType	=> 'product.isbn',
-			schStr	=> $isbn,
-		},
-	);
-
-	# The Search Results page
 	my $template = <<END;
-搜尋結果如下：[% ... %]<a href="[% book %]"
+<input type="checkbox" name="productID" value="[% bookid %]">
 END
 
 	my $extract = Template::Extract->new;
@@ -112,37 +102,43 @@ END
 	return $self->handler("Could not extract data from TWCwbook result page.")
 		unless(defined $data);
 
-	my $book = $data->{book};
-	$mechanize->get($book);
+	$url = "http://www.cwbook.com.tw/common/book.jsp?productID=$data->{bookid}";
+	$mechanize->get($url);
+	return undef unless($mechanize->success());
 
 	$template = <<END;
-<font color="#0066CC" class="book1">[% title %]</font>[% ... %]
-<img class="imagebordercolor" border="1" src="[% image_link %]">[% ... %]
-作者：[% ... %] color="#0066CC">[% author %]</font>[% ... %]
-出版社：[% ... %] color="#0066CC">[% publisher %]</font>[% ... %]
-初版：[% ... %] color="#0066CC">[% pubdate %]</font>[% ... %]
-ISBN：[% ... %] color="#0066CC">[% isbn %]</font>[% ... %]
-定價：[% ... %]<b>[% price_list %]</b>[% ... %]
-優惠價：[% ... %]<b>[% price_sell %]</b>
+<div id="main" class="product">[% ... %]
+<h2>[% title %]</h2>[% ... %]
+<div class="block"><img src="[% image_link %]" ></div>[% ... %]
+<li class="author">[% author %]</li>[% ... %]
+<li class="publisher">[% publisher %]</li>[% ... %]
+<li class="pubdate">[% pubdate %]</li>[% ... %]
+<li class="price1">[% price_list %]</li>
 END
 
 	$data = $extract->extract($template, $mechanize->content());
-
 	return $self->handler("Could not extract data from TWCwbook result page.")
 		unless(defined $data);
 
-	$data->{pubdate} =~ s/\s+//g;
+	my $conv = Text::Iconv->new("utf-8", "big5");
+	$data->{title} = $conv->convert($data->{title});
+	$data->{title} =~ s/[ \r\t]//g;
+	$data->{author} = $conv->convert($data->{author});
+	$data->{author} =~ s/作者：(.*)/$1/;
+	$data->{publisher} = $conv->convert($data->{publisher});
+	$data->{publisher} =~ s/出版社：(.*)/$1/;
+	$data->{pubdate} =~ s/\D*(\d+\/\d+\/\d+).*/$1/;
+	$data->{price_list} =~ s/\D+(\d+).*/$1/;
 
 	my $bk = {
-		'isbn'		=> $data->{isbn},
+		'isbn'		=> $isbn,
 		'title'		=> $data->{title},
 		'author'	=> $data->{author},
-		'book_link'	=> "http://www.cwbook.com.tw".$book,
+		'book_link'	=> $url,
 		'image_link'	=> "http://www.cwbook.com.tw".$data->{image_link},
 		'pubdate'	=> $data->{pubdate},
 		'publisher'	=> $data->{publisher},
 		'price_list'	=> $data->{price_list},
-		'price_sell'	=> $data->{price_sell},
 	};
 
 	$self->book($bk);

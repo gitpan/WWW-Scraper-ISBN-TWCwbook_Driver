@@ -23,10 +23,10 @@ SKIP: {
 
 	my $book = $record->book;
 	is($book->{'isbn'}, '9867158156');
-	is($book->{'title'}, '獵殺熱錢');
-	is($book->{'author'}, '安迪‧凱斯勒');
-	is($book->{'book_link'}, 'http://www.cwbook.com.tw/cw/TD.jsp?pid=BCCF0093P');
-	is($book->{'image_link'}, 'http://www.cwbook.com.tw/cw/images/cover/BBCCF0093P.jpg');
+	is($book->{'title'}, '獵殺熱錢─華爾街基金叢林大冒險');
+	is($book->{'author'}, '安迪．凱斯勒');
+	is($book->{'book_link'}, 'http://www.cwbook.com.tw/common/book.jsp?productID=278');
+	is($book->{'image_link'}, 'http://www.cwbook.com.tw/images/product/BBCCF0093P.jpg');
 	is($book->{'pubdate'}, '2005/10/26');
 	is($book->{'publisher'}, '天下雜誌');
 	is($book->{'price_list'}, '320');
